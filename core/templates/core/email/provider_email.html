@@ -1,0 +1,23 @@
+{% spaceless %}
+{% if support_email_header %}
+{{ support_email_header|safe }}
+{% endif %}
+{% endspaceless %}
+Welcome {{user}},<br/><br/>
+You have been granted access to the {{provider}} provider on Atmosphere.
+{% if credentials %}
+<br/>
+Your credentials are:
+{% for credential in credentials %}
+  {{ credential.key }}: {{credential.value }}
+{% endfor %}
+{% endif %}
+<br/>
+Additional information about how to use the new provider and credentials can be found <a href="{{new_provider_link}}">here.</a> For additional information or questions please contact {{support_email}}.
+<br/>
+Thank you,<br/>
+{% spaceless %}
+{% if support_email_footer %}
+{{ support_email_footer|safe }}
+{% endif %}
+{% endspaceless %}

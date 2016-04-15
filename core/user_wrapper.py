@@ -7,6 +7,7 @@ def convert_group(dgroup):
 
 
 class UserWrapper():
+
     """
     Use this to collect all relevant group information for a user
     """
@@ -14,7 +15,7 @@ class UserWrapper():
     provider = None
 
     def __init__(self, user_obj, provider_obj):
-        if type(user_obj) != User and isinstance(user_obj, ""):
+        if not isinstance(user_obj, User) and isinstance(user_obj, ""):
             user_obj = User.objects.get(username=user_obj)
         else:
             raise Exception("Expected User OR String, got %s" % type(user_obj))
@@ -63,15 +64,3 @@ class UserWrapper():
                  if ident not in identity_list
                  and ident.provider == self.provider])
         return identity_list
-
-    def all_providers(self):
-        """
-        Probably a useless function.. TBD
-        """
-        groups = self.all_groups()
-        provider_list = []
-        for group in groups:
-            provider_list.extend(
-                [x for x in group.providers.all()
-                 if x not in provider_list])
-        return provider_list

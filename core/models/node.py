@@ -8,6 +8,7 @@ from core.models.provider import Provider
 
 
 class NodeController(models.Model):
+
     """
     NodeControllers are specific to a provider
     They have a dedicated, static IP address and a human readable name
@@ -18,7 +19,7 @@ class NodeController(models.Model):
     hostname = models.CharField(max_length=256)
     port = models.IntegerField(default=22)
     private_ssh_key = models.TextField()
-    start_date = models.DateTimeField(default=timezone.now())
+    start_date = models.DateTimeField(default=timezone.now)
     end_date = models.DateTimeField(null=True, blank=True)
 
     def ssh_key_added(self):

@@ -1,0 +1,49 @@
+{% spaceless %}
+{% if support_email_header %}
+{{ support_email_header|safe }}
+{% endif %}
+{% endspaceless %}
+Hello {{user}},
+
+The {{site_name}} instance <{{instance_name}}> is running and ready for use.
+
+Your Instance Information:
+* Name: {{instance_name}}
+* IP Address: {{instance_ip}}
+* SSH Username: {{sshuser}}
+{% spaceless %}
+{% if use_ssh_keys and ssh_keys %}
+* SSH Keys deployed to /home/{{sshuser}}:
+{% spaceless %}
+{% for ssh_key in ssh_keys %}
+* {{ forloop.counter }}: {{ ssh_key.name }}
+{% endfor %}
+{% endspaceless %}
+{% endif %}
+{% endspaceless %}
+* UUID: {{instance_id}}
+* Cloud Provider: {{provider_location}}
+* Launched at: {{launched_at}} UTC ({{local_launched_at}} Arizona time)
+
+This e-mail notification was auto-generated after instance launch.
+
+Helpful links:
+  {% spaceless %}
+  {% if getting_started_instances_link %}
+  {{ getting_started_instances_name }}
+  * {{ getting_started_instances_link }}
+  {% endif %}
+  {% endspaceless %}
+  {% spaceless %}
+  {% if faq_link %}
+  {{ faq_link_name }}
+  * {{ faq_link }}
+  {% endif %}
+  {% endspaceless %}
+  E-mail Support:
+  * {{ support_email }}
+{% spaceless %}
+{% if support_email_footer %}
+{{ support_email_footer|safe }}
+{% endif %}
+{% endspaceless %}

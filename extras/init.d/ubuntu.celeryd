@@ -133,7 +133,7 @@ fi
 CELERYD_LOG_LEVEL=${CELERYD_LOG_LEVEL:-${CELERYD_LOGLEVEL:-$DEFAULT_LOG_LEVEL}}
 CELERY_BIN=${CELERY_BIN:-"celery"}
 CELERYD_MULTI=${CELERYD_MULTI:-"$CELERY_BIN multi"}
-CELERYD_FLOWER=${CELERYD_FLOWER:-"$CELERY_BIN flower"}
+CELERYD_FLOWER=${CELERYD_FLOWER:-"flower"}
 CELERYD_NODES=${CELERYD_NODES:-$DEFAULT_NODES}
 
 export CELERY_LOADER
@@ -300,6 +300,7 @@ restart_workers () {
     _chuid restart $CELERYD_NODES $DAEMON_OPTS      \
                    --pidfile="$CELERYD_PID_FILE"    \
                    --logfile="$CELERYD_LOG_FILE"    \
+                   --maxtasksperchild="$CELERYD_MAX_TASKS_PER_CHILD"          \
                    --loglevel="$CELERYD_LOG_LEVEL"  \
                    $CELERY_APP_ARG                  \
                    $CELERYD_OPTS
@@ -385,11 +386,23 @@ case "$1" in
         start_flower
     ;;
 
+    safe-stop)
+        check_dev_null
+        check_paths
+        stop_workers
+    ;;
+
+    safe-start)
+        check_dev_null
+        check_paths
+        start_workers
+    ;;
+
     start)
         check_dev_null
         check_paths
         start_workers
-        kill_flower
+        #kill_flower
         start_flower
     ;;
 
@@ -412,8 +425,8 @@ case "$1" in
         check_dev_null
         check_paths
         restart_workers
-        kill_flower
-        start_flower
+        #kill_flower
+        #start_flower
     ;;
 
     graceful)

@@ -1,41 +1,65 @@
-/var/log/apache2/* {
+# Note: for apache2 and celery, use the packaged version of logrotate
+/opt/dev/atmosphere/logs/atmosphere.log {
     daily
-    maxsize=500k
+    rotate 10
     missingok
-    rotate 5
     compress
     delaycompress
     notifempty
-    create 666 root adm
-    sharedscripts
-    postrotate
-        /etc/init.d/apache2 reload > /dev/null
-    endscript
-    prerotate
-        if [ -d /etc/logrotate.d/httpd-prerotate ]; then \
-            run-parts /etc/logrotate.d/httpd-prerotate; \
-        fi; \
-    endscript
+    copytruncate
 }
-/var/log/celery/* {
+/opt/dev/atmosphere/logs/libcloud.log {
     daily
-    maxsize=500k
+    size 100M
+    rotate 10
     missingok
-    rotate 5
     compress
     delaycompress
     notifempty
-    create 666 root adm
-    sharedscripts
+    copytruncate
 }
-/opt/dev/atmosphere/logs/* {
+/opt/dev/atmosphere/logs/atmosphere_api.log {
     daily
-    maxsize=500k
+    rotate 4
     missingok
-    rotate 5
     compress
     delaycompress
     notifempty
-    create 666 root adm
-    sharedscripts
+    copytruncate
+}
+/opt/dev/atmosphere/logs/atmosphere_auth.log {
+    daily
+    rotate 4
+    missingok
+    compress
+    delaycompress
+    notifempty
+    copytruncate
+}
+/opt/dev/atmosphere/logs/atmosphere_deploy.log {
+    daily
+    rotate 4
+    missingok
+    compress
+    delaycompress
+    notifempty
+    copytruncate
+}
+/opt/dev/atmosphere/logs/atmosphere_email.log {
+    daily
+    rotate 2
+    missingok
+    compress
+    delaycompress
+    notifempty
+    copytruncate
+}
+/opt/dev/atmosphere/logs/atmosphere_status.log {
+    daily
+    rotate 4
+    missingok
+    compress
+    delaycompress
+    notifempty
+    copytruncate
 }

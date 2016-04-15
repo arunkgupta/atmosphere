@@ -11,38 +11,52 @@ WEB_SERVICE="apache2" # could be httpd on centos..
 WEB_INITD="/etc/init.d/$WEB_SERVICE"
 CELERY_INITD="/etc/init.d/celeryd"
 CELERYBEAT_INITD="/etc/init.d/celerybeat"
-REDIS_INITD="/etc/init.d/redis-server"
+if [ -f "/etc/init.d/rabbitmq-server" ]; then
+    TASK_MGR_SERVICE="/etc/init.d/rabbitmq-server"
+    TASK_MGR="rabbitmq-server"
+elif [ -f "/etc/init/redis-server.conf" ]; then
+    TASK_MGR_SERVICE="/etc/init/redis-server.conf"
+    TASK_MGR="redis-server"
+elif [ -f "/etc/init.d/redis-server" ]; then
+    TASK_MGR_SERVICE="/etc/init.d/redis-server"
+    TASK_MGR="redis-server"
+fi
 CELERY_DEFAULT="/etc/default/celeryd"
 
 if [ ! -f  $CELERY_INITD ]; then
-    echo "MISSING DEPEDENCY: Expected celery service file $CELERY_INITD missing"
+    echo "MISSING DEPENDENCY: Expected celery service file $CELERY_INITD missing"
     echo "For Ubuntu:"
     echo "ln -s /opt/dev/atmosphere/extras/init.d/ubuntu.celeryd $CELERY_INITD"
     echo "For CentOS:"
     echo "ln -s /opt/dev/atmosphere/extras/init.d/centos.celeryd $CELERY_INITD"
     exit 1
 elif [ ! -f  $CELERYBEAT_INITD ]; then
-    echo "MISSING DEPEDENCY: Expected celery service file $CELERYBEAT_INITD missing"
+    echo "MISSING DEPENDENCY: Expected celery service file $CELERYBEAT_INITD missing"
     echo "For Ubuntu:"
     echo "ln -s /opt/dev/atmosphere/extras/init.d/ubuntu.celerybeat $CELERYBEAT_INITD"
     exit 1
 elif [ ! -f  $CELERY_DEFAULT ]; then
-    echo "MISSING DEPEDENCY: Celery config file $CELERY_DEFAULT missing."
+    echo "MISSING DEPENDENCY: Celery config file $CELERY_DEFAULT missing."
+    echo "cp /opt/dev/atmosphere/extras/init.d/celeryd.default.dist /opt/dev/atmosphere/extras/init.d/celeryd.default"
     echo "ln -s /opt/dev/atmosphere/extras/init.d/celeryd.default $CELERY_DEFAULT"
     exit 1
-elif [ ! -f  $REDIS_INITD ]; then
-    echo "MISSING DEPEDENCY: Init file for $REDIS_INITD missing."
-    echo "sudo apt-get install redis-server"
+elif [ ! -f  $TASK_MGR_SERVICE ]; then
+    echo "MISSING DEPENDENCY: Init file for $TASK_MGR_SERVICE missing."
+    echo "sudo apt-get install $TASK_MGR"
     exit 1
 elif [ ! -f  $WEB_INITD ]; then
-    echo "MISSING DEPEDENCY: Expected apache service file $WEB_INITD missing"
+    echo "MISSING DEPENDENCY: Expected apache service file $WEB_INITD missing"
     exit 1
 fi
 
 case "$1" in
 status)
+    printf "Atmosphere uwsgi..\n"
+    service uwsgi status atmosphere
+    printf "Troposphere uwsgi..\n"
+    service uwsgi status troposphere
     service apache2 status
-    service redis-server status
+    service $TASK_MGR status
     service celeryd status
     service celerybeat status
 ;;
@@ -52,10 +66,12 @@ full-start | start)
         echo "You must be a root user to start atmosphere"
         exit 1
     fi
+    printf "Starting uwsgi..\n"
+    service uwsgi start
     printf "Starting $WEB_SERVICE\n"
     service $WEB_SERVICE start
-    printf "Starting redis server..\n"
-    service redis-server start
+    printf "Starting $TASK_MGR \n"
+    service $TASK_MGR start
     printf "Starting Celery..\n"
     service celeryd start
     printf "Starting Celerybeat..\n"
@@ -67,13 +83,15 @@ full-stop)
         echo "You must be a root user to stop atmosphere"
         exit 1
     fi
+    printf "Stopping uwsgi..\n"
+    service uwsgi stop
     printf "Stopping $WEB_SERVICE\n"
     service $WEB_SERVICE stop
     printf "Stopping Celery..\n"
     service celeryd stop
     service celerybeat stop
-    printf "Stopping redis server..\n"
-    service redis-server stop
+    printf "Stopping $TASK_MGR ..\n"
+    service $TASK_MGR stop
 ;;
 stop)
     printf "Stopping $NAME...\n"
@@ -93,7 +111,9 @@ restart)
         echo "You must be a root user to restart atmosphere"
         exit 1
     fi
-    echo "Restarting Atmosphere Web Service"
+    echo "Restarting Atmosphere Web Services (uWSGI)"
+    service uwsgi restart
+    echo "Restarting Atmosphere Web Services (Apache)"
     service apache2 restart
 ;;
 
@@ -102,8 +122,12 @@ celery-restart)
         echo "You must be a root user to restart atmosphere"
         exit 1
     fi
-    echo "Restarting Atmosphere Web Service"
+    echo "Restarting Atmosphere Web Services (uWSGI)"
+    service uwsgi restart
+    echo "Restarting Atmosphere Web Services (Apache)"
     service apache2 restart
+    #echo "Force Killing All Celery Nodes"
+    #service celeryd kill
     echo "Restarting Atmosphere Celery Nodes"
     service celeryd restart
     service celerybeat restart
@@ -111,6 +135,6 @@ celery-restart)
 
 *)
         echo "Usage: $0 {celery-restart|full-start|full-stop|status|start|stop|restart}"
-        echo "Full start/stop will include the redis-server in the process"
+        echo "Full start/stop will include the $TASK_MGR in the process"
         exit 1
 esac

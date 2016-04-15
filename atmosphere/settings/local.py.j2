@@ -1,0 +1,238 @@
+"""
+Settings specific to the local deploy.
+"""
+import os
+import sys
+
+# This is used by dependencies (ex: chromogenic)
+# without exposing 'secret' settings in Debug mode.
+from atmosphere.settings import secrets
+SECRETS_MODULE = secrets
+
+globals().update(vars(sys.modules['atmosphere.settings']))
+
+# Debug Mode
+DEBUG = {{ DJANGO_DEBUG }}
+TEMPLATE_DEBUG = {{ DJANGO_TEMPLATE_DEBUG }}
+{% if ENFORCING %}
+ENFORCING = True
+{% else %}
+ENFORCING = False
+{% endif %}
+
+#Cloud-Operator specific information
+SITE_NAME = '{{ SITE_NAME }}'
+{% if TIME_ZONE %}
+TIME_ZONE = '{{ TIME_ZONE }}'
+CELERY_TIMEZONE = TIME_ZONE
+{% endif %}
+DEFAULT_EMAIL_DOMAIN = '{{ DEFAULT_EMAIL_DOMAIN }}'
+{% if ADMINS_EMAIL_TUPLE %}
+ADMINS = [
+# The first admin will AUTHOR all e-mails.
+# These ADMINS override values set in __init__.py
+{%- for email_tuple in ADMINS_EMAIL_TUPLE %}
+  {{ email_tuple }},
+{%- endfor %}
+]
+{% endif %}
+SUPPORT_EMAIL = '{{ SUPPORT_EMAIL }}'
+SUPPORT_EMAIL_SIGNATURE = '{{ SUPPORT_EMAIL_SIGNATURE }}'
+SUPPORT_LINKS = {{ SUPPORT_LINKS }}
+REPLICATION_PROVIDER_LOCATION = '{{ REPLICATION_PROVIDER_LOCATION }}'
+MONTHLY_RESET_PROVIDER_LOCATIONS = {{ MONTHLY_RESET_PROVIDER_LOCATIONS }}
+USER_EMAIL_LOOKUP_METHOD = '{{ USER_EMAIL_LOOKUP_METHOD }}'
+EMAIL_LOOKUP_METHOD = '{{ EMAIL_LOOKUP_METHOD }}'
+DEFAULT_ALLOCATION_THRESHOLD = {{ DEFAULT_ALLOCATION_THRESHOLD }}
+DEFAULT_ALLOCATION_DELTA = {{ DEFAULT_ALLOCATION_DELTA }}
+DEFAULT_QUOTA = {{ DEFAULT_QUOTA }}
+DEFAULT_KEYSTONE_ROLE = '{{ DEFAULT_KEYSTONE_ROLE }}'
+DEFAULT_IP_LOOKUP = '{{ DEFAULT_IP_LOOKUP }}'
+INSTANCE_HOSTNAMING_DOMAIN = '{{ INSTANCE_HOSTNAMING_DOMAIN }}'
+INSTANCE_HOSTNAMING_FORMAT = '{{ INSTANCE_HOSTNAMING_FORMAT }}'
+{%- if AUTO_CREATE_NEW_ACCOUNTS %}
+AUTO_CREATE_NEW_ACCOUNTS = True
+{%- else %}
+AUTO_CREATE_NEW_ACCOUNTS = False
+{%- endif %}
+{%- if CELERYBEAT_SCHEDULE %}
+#CELERYBEAT_SCHEDULE OVERRIDES:
+  {%- for task_key, schedule in CELERYBEAT_SCHEDULE.items() %}
+    {%- for task_opt, task_opt_value in schedule.items() %}
+CELERYBEAT_SCHEDULE["{{task_key}}"]["{{task_opt}}"] = {{task_opt_value}}
+    {%- endfor %}
+  {%- endfor %}
+{%- endif %}
+# Logging
+LOGGING_LEVEL = {{ LOGGING_LEVEL }}
+# Logging level for dependencies.
+DEP_LOGGING_LEVEL = {{ LOGGING_DEP_LEVEL }}
+
+
+PROJECT_ROOT = os.path.abspath(
+    os.path.join(
+    os.path.dirname(__file__), '../..'))
+
+SERVER_URL = '{{ DJANGO_SERVER_URL }}'
+
+
+DATABASES = {
+    'default': {
+        'NAME': '{{ DATABASE_NAME }}',
+        'ENGINE': '{{ DATABASE_ENGINE }}',
+        'USER': '{{ DATABASE_USER }}',
+        'CONN_MAX_AGE': {{ DATABASE_CONN_MAX_AGE }},
+        'PASSWORD': '{{ DATABASE_PASSWORD }}',
+        'HOST': '{{ DATABASE_HOST }}',
+        'PORT': {{ DATABASE_PORT }}
+    },
+}
+
+
+# Prevents warnings
+ALLOWED_HOSTS = [SERVER_URL.replace('https://', '')]
+
+
+# Atmosphere Keypair/Deployment Configs
+ATMOSPHERE_PRIVATE_KEYFILE = os.path.join(PROJECT_ROOT, 'extras/ssh/id_rsa')
+ATMOSPHERE_KEYPAIR_FILE = os.path.join(PROJECT_ROOT, 'extras/ssh/id_rsa.pub')
+ATMOSPHERE_KEYPAIR_NAME = 'atmosphere'
+
+
+# Atmosphere App Configs
+INSTANCE_SERVICE_URL = SERVER_URL + REDIRECT_URL + '/api/v1/notification'
+INSTANCE_SERVICE_URL.replace('https', 'http')
+API_SERVER_URL = SERVER_URL + REDIRECT_URL + '/resources/v1'
+AUTH_SERVER_URL = SERVER_URL + REDIRECT_URL + '/auth'
+DEPLOY_SERVER_URL = SERVER_URL.replace('https', 'http')
+
+# Django-Celery Development settings
+# CELERY_EAGER_PROPAGATES_EXCEPTIONS = True  # Issue #75
+
+# Configure authentication plugin
+AUTHENTICATION = {
+    #GLOBAL
+    "TOKEN_EXPIRY_TIME": timedelta(days={{ TOKEN_EXPIRY_TIME_DAYS }}),
+    "SELF_SIGNED_CERT": {{ SELF_SIGNED_CERT }},
+    "LOGOUT_REDIRECT_URL": '{{ LOGOUT_REDIRECT_URL }}',
+    #CAS
+    "CAS_SERVER": '{{ CAS_SERVER }}',
+    "CAS_AUTH_PREFIX": '{{ CAS_AUTH_PREFIX }}',
+
+    #CAS+OAuth
+    "OAUTH_CLIENT_KEY": '{{ OAUTH_CLIENT_KEY }}',
+    "OAUTH_CLIENT_SECRET": '{{ OAUTH_CLIENT_SECRET }}',
+    "OAUTH_CLIENT_CALLBACK":  SERVER_URL + '/oauth2.0/callbackAuthorize',
+    "OAUTH_ISSUE_USER": '{{ OAUTH_ISSUE_USER}}',
+
+    #LDAP
+    "LDAP_SERVER": '{{ LDAP_SERVER }}',
+    "LDAP_SERVER_DN": '{{ LDAP_SERVER_DN }}',
+    {% if JWT_INSTALL %}
+    # WSO2 + JWT
+    "JWT_SP_PUBLIC_KEY_FILE" :'{{ JWT_PUBLIC_KEY }}',
+    "JWT_CLIENT_KEY" :'{{ JWT_CLIENT_KEY }}',
+    "JWT_CLIENT_SECRET" :'{{ JWT_CLIENT_SECRET }}',
+    {% endif %}
+
+
+    #GLOBUS
+    "GLOBUS_OAUTH_ID": '{{ GLOBUS_OAUTH_ID }}',
+    "GLOBUS_OAUTH_SECRET": '{{ GLOBUS_OAUTH_SECRET }}',
+    "GLOBUS_OAUTH_CREDENTIALS_SCOPE": '{{ GLOBUS_OAUTH_CREDENTIALS_SCOPE }}',
+    "GLOBUS_OAUTH_ATMOSPHERE_SCOPE": '{{ GLOBUS_OAUTH_ATMOSPHERE_SCOPE }}',
+    "GLOBUS_TOKEN_URL": '{{ GLOBUS_TOKEN_URL }}',
+    "GLOBUS_TOKENINFO_URL": '{{ GLOBUS_TOKENINFO_URL }}',
+    "GLOBUS_AUTH_URL": '{{ GLOBUS_AUTH_URL }}',
+}
+
+{% if AUTH_ENABLE_MOCK %}
+ALWAYS_AUTH_USER = "{{ AUTH_MOCK_USER }}"
+{% else %}
+# MOCK - Uncomment these lines to allow one-user-only access. Useful for debug/development
+# ALWAYS_AUTH_USER = "test_user"
+{% endif %}
+{% if AUTH_USE_OVERRIDE %}
+AUTHENTICATION_BACKENDS = (
+    {% if AUTH_ENABLE_MOCK %}
+    # Use MockLoginBackend first!
+    'iplantauth.authBackends.MockLoginBackend',
+    {% else %}
+    # MOCK - Uncomment these lines to allow one-user-only access. Useful for debug/development
+    # 'iplantauth.authBackends.MockLoginBackend',
+    # MOCK - Required to login to 'admin' if the *ONLY* backend is MockLoginBackend.
+    # 'django.contrib.auth.backends.ModelBackend',
+    {% endif %}
+    {% if AUTH_ENABLE_GLOBUS %}
+    # For Web-Access
+    'iplantauth.authBackends.GlobusOAuthLoginBackend',
+    'iplantauth.authBackends.AuthTokenLoginBackend',
+    # Required to login to 'admin' if the *ONLY* backend is GlobusLoginBackend
+    'django.contrib.auth.backends.ModelBackend',
+    {% endif %}
+    {% if AUTH_ENABLE_CAS %}
+    # For Web-Access
+    'iplantauth.authBackends.CASLoginBackend',
+    {% endif %}
+    {% if AUTH_ENABLE_LDAP %}
+    # For Service-Access
+    'iplantauth.authBackends.LDAPLoginBackend',
+    {% endif %}
+)
+# UPDATE REST_FRAMEWORK
+REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = (
+    'iplantauth.token.TokenAuthentication',  # Generic Tokens
+    'rest_framework.authentication.SessionAuthentication',  # Session
+    {% if AUTH_ENABLE_GLOBUS %}
+    'iplantauth.token.GlobusOAuthTokenAuthentication',  # Globus
+    {% endif %}
+    {% if AUTH_ENABLE_CAS %}
+    'iplantauth.token.OAuthTokenAuthentication',  # CAS
+    {% endif %}
+)
+{% endif %}
+# CASLIB
+SERVER_URL = SERVER_URL + REDIRECT_URL
+SERVICE_URL = SERVER_URL + '/CAS_serviceValidater?sendback=' + REDIRECT_URL + '/application/'
+PROXY_URL = SERVER_URL + '/CAS_proxyUrl'
+PROXY_CALLBACK_URL = SERVER_URL + '/CAS_proxyCallback'
+
+
+# Atmosphere Ansible Deploy
+ANSIBLE_ROOT = '{{ ANSIBLE_ROOT }}'
+# The root directory for the ansible deploy project.
+# If this is emptry str then ansible deploys will not
+# run and will warn that ansible is no configured.
+ANSIBLE_CONFIG_FILE = os.path.join(ANSIBLE_ROOT, 'ansible/ansible.cfg')
+ANSIBLE_HOST_FILE = os.path.join(ANSIBLE_ROOT, 'ansible/hosts')
+ANSIBLE_PLAYBOOKS_DIR = os.path.join(ANSIBLE_ROOT, 'ansible/playbooks')
+ANSIBLE_ROLES_PATH = os.path.join(ANSIBLE_ROOT, 'ansible/roles')
+
+
+# LOGSTASH
+LOGSTASH_HOST = '{{ LOGSTASH_HOST }}'
+LOGSTASH_PORT = {{ LOGSTASH_PORT }}
+try:
+    import logstash
+    import threepio
+    has_logstash = True
+except ImportError:
+    has_logstash = False
+
+
+METRIC_SERVER = '{{ METRIC_SERVER }}'
+
+{% if LOG_LIBCLOUD %}
+os.environ["LIBCLOUD_DEBUG"] = os.path.join(PROJECT_ROOT, "logs/libcloud.log")
+os.environ["LIBCLOUD_DEBUG_PRETTY_PRINT_RESPONSE"] = "True"
+{% endif %}
+
+
+if has_logstash and LOGSTASH_HOST:
+    fh = logstash.TCPLogstashHandler(LOGSTASH_HOST, LOGSTASH_PORT,
+                                     message_type='atmo-deploy', version=1)
+    threepio.deploy_logger.addHandler(fh)
+
+{% if TESTING %}
+{% include "atmosphere/settings/testing.j2" %}
+{% endif %}

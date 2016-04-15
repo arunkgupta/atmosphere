@@ -2,7 +2,6 @@
 Basic LDAP functions.
 """
 from __future__ import absolute_import
-
 import ldap as ldap_driver
 
 from threepio import logger
@@ -24,6 +23,8 @@ def get_uid_number(userid):
         logger.warn("Error - User %s does not exist" % userid)
         return None
     except Exception as e:
-        logger.warn("Error occurred getting user uidNumber for user: %s" % userid)
+        logger.warn(
+            "Error occurred getting user uidNumber for user: %s" %
+            userid)
         logger.exception(e)
         return None

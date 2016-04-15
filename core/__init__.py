@@ -3,10 +3,12 @@ Base classes.
 """
 
 from abc import ABCMeta, abstractmethod
-import core.tasks.instance
 
 # Base Classes
+
+
 class Persist():
+
     """
     Persist is an Abstract class-interface
     Classes extending/implementing Persist are expected to implement:

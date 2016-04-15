@@ -2,24 +2,27 @@
 Settings for atmosphere project.
 
 """
-
 from __future__ import absolute_import
 from datetime import timedelta
-from celery.schedules import crontab
 from uuid import UUID
 import logging
-import os
-import os.path
 import sys
 
+from dateutil.relativedelta import relativedelta
+from celery.schedules import crontab
+import os
+import os.path
 import threepio
-import caslib
-
 import atmosphere
+from kombu import Exchange, Queue
 
-#Debug Mode
+
+# Debug Mode
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
+
+# Enforcing mode -- True, when in production (Debug=False)
+ENFORCING = not DEBUG
 
 SETTINGS_ROOT = os.path.abspath(os.path.dirname(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__),
@@ -34,13 +37,17 @@ REDIRECT_URL = ''
 # See https://docs.djangoproject.com/en/1.5/ref/settings/#allowed-hosts
 ALLOWED_HOSTS = [unicode(SERVER_URL.replace('https://', ''))]
 
-#NOTE: first admin will be sender of atmo emails.
+# NOTE: first admin will be sender of atmo emails.
 ADMINS = (
-    ('Atmosphere Admin', 'atmo@iplantcollaborative.org'),
-    ('J. Matt Peterson', 'jmatt@iplantcollaborative.org'),
-    ('Steven Gregory', 'esteve@iplantcollaborative.org'),
+    ('AT LEAST ONE ADMIN REQUIRED', 'sends-email@if-debug-false.com'),
 )
 
+
+# Required to send RequestTracker emails
+ATMO_SUPPORT = ADMINS
+ATMO_DAEMON = (("Atmosphere Daemon", "atmo-alerts@iplantcollaborative.org"),)
+
+# Django uses this one..
 MANAGERS = ADMINS
 
 DATABASES = {
@@ -54,34 +61,33 @@ DATABASES = {
     },
 }
 INSTALLED_APPS = (
-    #contrib apps
+    # contrib apps
     'django.contrib.auth',
     'django.contrib.admin',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.staticfiles',
 
-    #3rd party apps
+    # 3rd party apps
     'rest_framework',
-    'rest_framework_swagger',
+    'django_filters',
 
-    'south',
     'djcelery',
-    'django_jenkins',
-    'pipeline',
     'corsheaders',
+    # 3rd party apps (Development Only)
+    #'django_jenkins',
+    #'sslserver',
 
-    #iPlant apps
+    # iPlant apps
+    'iplantauth',
     'rtwo',
 
-    #atmosphere apps
-    'authentication',
+    # atmosphere apps
+    'api',
+    'allocation',
     'service',
-    'web',
     'core',
 )
-
-DATABASE_ROUTERS = ['atmosphere.routers.Service']
 
 TIME_ZONE = 'America/Phoenix'
 
@@ -93,87 +99,32 @@ USE_I18N = True
 
 USE_TZ = True
 
-# Absolute path to the directory that holds media.
-# Example: '/home/media/media.lawrence.com/'
-MEDIA_ROOT = os.path.join(PROJECT_ROOT, 'resources/')
+# Atmosphere Time Allocation settings
+FIXED_WINDOW = relativedelta(day=1, months=1)
 
-# URL that handles the media served from MEDIA_ROOT. Make sure to use a
-# trailing slash if there is a path component (optional in other cases).
-# Examples: 'http://media.lawrence.com', 'http://example.com/media/'
+# To load images for 404 page
+MEDIA_ROOT = os.path.join(PROJECT_ROOT, 'resources/')
 MEDIA_URL = '/resources/'
 
 # URL prefix for admin media -- CSS, JavaScript and images. Make sure to use a
 # trailing slash.
 # Examples: 'http://foo.com/media/', '/media/'.
 STATIC_ROOT = os.path.join(PROJECT_ROOT, 'static/')
-
 STATIC_URL = '/static/'
 
-STATICFILES_DIRS = (
-    os.path.join(PROJECT_ROOT, "resources"),
-)
-
-# Make this unique, and don't share it with anybody.
-# NOTE: This value is not used, check local.py!
-SECRET_KEY = None
-
 # This key however should stay the same, and be shared with all Atmosphere
-ATMOSPHERE_NAMESPACE_UUID=UUID("40227dff-dedf-469c-a9f8-1953a7372ac1")
-
-#django-pipeline configuration
-PIPELINE = False
-
-PIPELINE_ENABLED = False
-
-STATICFILES_STORAGE = 'pipeline.storage.PipelineStorage'
-
-PIPELINE_CSS = {
-    'app': {
-        'source_filenames': (
-            'css/cloudfront.css',
-        ),
-        'output_filename': 'css/app.css',
-        'extra_context': {
-            'media': 'screen,projection',
-        },
-    },
-}
-
-PIPELINE_JS = {
-    'app': {
-        'source_filenames': (
-            'js/cloudfront2.js',
-            'js/base.js',
-            'partials/templates.js',
-        ),
-        'output_filename': 'js/app.js',
-    }
-}
-
-# List of callables that know how to import templates from various sources.
-STATICFILES_FINDERS = (
-    'pipeline.finders.FileSystemFinder',
-    'pipeline.finders.AppDirectoriesFinder',
-    'pipeline.finders.PipelineFinder',
-    'pipeline.finders.CachedFileFinder',
-    'django.contrib.staticfiles.finders.FileSystemFinder',
-    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
-#    'pipeline.finders.AppDirectoriesFinder',
-#    'pipeline.finders.CachedFileFinder',
-)
-TEMPLATE_LOADERS = (
-    'django.template.loaders.filesystem.Loader',
-    'django.template.loaders.app_directories.Loader'
-)
+ATMOSPHERE_NAMESPACE_UUID = UUID("40227dff-dedf-469c-a9f8-1953a7372ac1")
 
 MIDDLEWARE_CLASSES = (
     'corsheaders.middleware.CorsMiddleware',
     # corsheaders.middleware.CorsMiddleware Must be ahead of
     # configuration CommonMiddleware for an edge case.
+
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.middleware.gzip.GZipMiddleware',
-    'pipeline.middleware.MinifyHTMLMiddleware',
+    #For profile/debugging
+    #'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -190,86 +141,152 @@ TEMPLATE_DIRS = (
 )
 
 AUTH_USER_MODEL = 'core.AtmosphereUser'
-AUTH_USER_MODULE = 'core.AtmosphereUser'
-AUTH_PROFILE_MODULE = 'core.UserProfile'
 
 AUTHENTICATION_BACKENDS = (
-    #'authentication.authBackends.CASLoginBackend',  # For Web-Access
-    'authentication.authBackends.SAMLLoginBackend',  # For Web-Access
-    'authentication.authBackends.LDAPLoginBackend',  # For Service-Access
-    'authentication.authBackends.OAuthLoginBackend',  # For 3rd-party-web Service-Access
+    # For Token-Access
+    #'iplantauth.authBackends.GlobusOAuthLoginBackend',
+    'iplantauth.authBackends.AuthTokenLoginBackend',
+    # For Web-Access
+    'iplantauth.authBackends.CASLoginBackend',
+    #'iplantauth.authBackends.SAMLLoginBackend',
+    ## For Service-Access
+    'iplantauth.authBackends.LDAPLoginBackend',
 )
 
 # django-cors-headers
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_ORIGIN_WHITELIST = None
 
-JENKINS_TASKS = (
-    'django_jenkins.tasks.with_coverage',
-    'django_jenkins.tasks.run_pep8',
-    'django_jenkins.tasks.run_pyflakes',
-)
 # The age of session cookies, in seconds.
 # http://docs.djangoproject.com/en/dev/ref/settings/
 # http://docs.djangoproject.com/en/dev/topics/http/sessions/
 # Now I set sessio cookies life time = 3600 seconds = 1 hour
-#SESSION_COOKIE_AGE = 3600
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
 
-## ATMOSPHERE APP CONFIGS
-# INSTANCE_SERVICE_URL = SERVER_URL + REDIRECT_URL+'/instanceservice/'
+# ATMOSPHERE APP CONFIGS
 INSTANCE_SERVICE_URL = SERVER_URL + REDIRECT_URL + '/api/notification/'
 API_SERVER_URL = SERVER_URL + REDIRECT_URL + '/resources/v1'
 AUTH_SERVER_URL = SERVER_URL + REDIRECT_URL + '/auth'
 INIT_SCRIPT_PREFIX = '/init_files/'
 DEPLOY_SERVER_URL = SERVER_URL.replace("https", "http")
 
-## logging
+# Stops 500 errors when logs are missing.
+# NOTE: If the permissions are wrong, this won't help
+
+
+def check_and_touch(file_path):
+    if os.path.exists(file_path):
+        return
+    parent_dir = os.path.dirname(file_path)
+    if not os.path.isdir(parent_dir):
+        os.makedirs(parent_dir)
+    #'touch' the file.
+    with open(file_path, 'a'):
+        os.utime(file_path, None)
+    return
+
+# logging
 LOGGING_LEVEL = logging.DEBUG
 DEP_LOGGING_LEVEL = logging.INFO  # Logging level for dependencies.
-LOG_FILENAME = os.path.abspath(os.path.join(
-    os.path.dirname(atmosphere.__file__),
-    '..',
-    'logs/atmosphere.log'))
 
+# Filenames
+
+
+def create_log_path(filename):
+    return os.path.abspath(
+        os.path.join(
+            os.path.dirname(atmosphere.__file__),
+            '..',
+            'logs',
+            filename))
+
+LOG_FILENAME = create_log_path("atmosphere.log")
+API_LOG_FILENAME = create_log_path("atmosphere_api.log")
+AUTH_LOG_FILENAME = create_log_path('atmosphere_auth.log')
+EMAIL_LOG_FILENAME = create_log_path('atmosphere_email.log')
+STATUS_LOG_FILENAME = create_log_path('atmosphere_status.log')
+DEPLOY_LOG_FILENAME = create_log_path('atmosphere_deploy.log')
+
+check_and_touch(LOG_FILENAME)
+check_and_touch(API_LOG_FILENAME)
+check_and_touch(AUTH_LOG_FILENAME)
+check_and_touch(EMAIL_LOG_FILENAME)
+check_and_touch(STATUS_LOG_FILENAME)
+check_and_touch(DEPLOY_LOG_FILENAME)
+
+#####
+# FileHandler
+#####
+# Default filehandler will use 'LOG_FILENAME'
+api_fh = logging.FileHandler(API_LOG_FILENAME)
+auth_fh = logging.FileHandler(AUTH_LOG_FILENAME)
+email_fh = logging.FileHandler(EMAIL_LOG_FILENAME)
+status_fh = logging.FileHandler(STATUS_LOG_FILENAME)
+deploy_fh = logging.FileHandler(DEPLOY_LOG_FILENAME)
+####
+# Formatters
+####
+# Logger initialization
+# NOTE: The format for status_logger is defined in the message ONLY!
+# timestamp, user, instance_alias, machine_alias, size_alias, status_update
+# create formatter and add it to the handlers
+base_format = '%(message)s'
+formatter = logging.Formatter(base_format)
+status_fh.setFormatter(formatter)
+
+####
+# Logger Initialization
+####
 threepio.initialize("atmosphere",
                     log_filename=LOG_FILENAME,
                     app_logging_level=LOGGING_LEVEL,
                     dep_logging_level=DEP_LOGGING_LEVEL)
-## NOTE: The format for status_logger
-# timestamp, user, instance_alias, machine_alias, size_alias, status_update
-
-STATUS_LOG_FILENAME = os.path.abspath(os.path.join(
-    os.path.dirname(atmosphere.__file__),
-    '..',
-    'logs/atmosphere_status.log'))
-fh = logging.FileHandler(STATUS_LOG_FILENAME)
-# create formatter and add it to the handlers
-base_format = '%(message)s'
-formatter = logging.Formatter(base_format)
-fh.setFormatter(formatter)
+# Add handler to the remaining loggers
 threepio.status_logger = threepio\
         .initialize("atmosphere_status",
-                    handlers=[fh],
+                    handlers=[status_fh],
                     app_logging_level=LOGGING_LEVEL,
                     dep_logging_level=DEP_LOGGING_LEVEL,
                     global_logger=False,
                     format=base_format)
 threepio.email_logger = threepio\
         .initialize("atmosphere_email",
+                    handlers=[email_fh],
                     log_filename=LOG_FILENAME,
                     app_logging_level=LOGGING_LEVEL,
                     dep_logging_level=DEP_LOGGING_LEVEL,
                     global_logger=False)
 threepio.api_logger = threepio\
         .initialize("atmosphere_api",
+                    handlers=[api_fh],
+                    log_filename=LOG_FILENAME,
+                    app_logging_level=LOGGING_LEVEL,
+                    dep_logging_level=DEP_LOGGING_LEVEL,
+                    global_logger=False)
+threepio.auth_logger = threepio\
+        .initialize("atmosphere_auth",
+                    handlers=[auth_fh],
+                    log_filename=LOG_FILENAME,
+                    app_logging_level=LOGGING_LEVEL,
+                    dep_logging_level=DEP_LOGGING_LEVEL,
+                    global_logger=False)
+threepio.deploy_logger = threepio\
+        .initialize("atmosphere_deploy",
+                    handlers=[deploy_fh],
+                    log_filename=DEPLOY_LOG_FILENAME,
+                    app_logging_level=LOGGING_LEVEL,
+                    dep_logging_level=DEP_LOGGING_LEVEL,
+                    global_logger=False)
+threepio.celery_logger = threepio\
+        .initialize("atmosphere_celery",
                     log_filename=LOG_FILENAME,
                     app_logging_level=LOGGING_LEVEL,
                     dep_logging_level=DEP_LOGGING_LEVEL,
                     global_logger=False)
 
-##Directory that the app (One level above this file) exists
+
+# Directory that the app (One level above this file) exists
 # (TEST if this is necessary)
 root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
 if 'PYTHONPATH' in os.environ:
@@ -278,49 +295,42 @@ else:
     os.environ['PYTHONPATH'] = root_dir
 
 
-## Redirect stdout to stderr.
+# Redirect stdout to stderr.
 sys.stdout = sys.stderr
 
-##REST FRAMEWORK
+# REST FRAMEWORK
 REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': (
-        # Included Renderers
+        # Included Renderers (In order of preference)
+        'api.renderers.BrowsableAPIRenderer',
         'rest_framework.renderers.JSONRenderer',
-        'rest_framework.renderers.JSONPRenderer',
-        'rest_framework.renderers.BrowsableAPIRenderer',
-        'rest_framework.renderers.YAMLRenderer',
-        'rest_framework.renderers.XMLRenderer',
-        # Our Renderers
+        'rest_framework_jsonp.renderers.JSONPRenderer',
         'api.renderers.PNGRenderer',
         'api.renderers.JPEGRenderer',
+        # Easily enabled if/when support is desired
+        #'rest_framework.renderers.AdminRenderer',
+        #'rest_framework_yaml.renderers.YAMLRenderer',
+        #'rest_framework_xml.renderers.XMLRenderer',
     ),
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'authentication.token.OAuthTokenAuthentication',
-        'authentication.token.TokenAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
-
+        'iplantauth.token.TokenAuthentication', # Generic Tokens
+        # 'iplantauth.token.JWTTokenAuthentication',  # WSO2+JWT
+        'iplantauth.token.OAuthTokenAuthentication',  # CAS
+        #'iplantauth.token.GlobusOAuthTokenAuthentication',  # Globus
+        # 'iplantauth.token.TokenAuthentication',  # Generic Tokens
+        'rest_framework.authentication.SessionAuthentication',  # Session
+    ),
+    'DEFAULT_PAGINATION_CLASS': 'api.pagination.StandardResultsSetPagination',
+    'DEFAULT_FILTER_BACKENDS': (
+        'rest_framework.filters.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter'
     )
 }
-#REST_FRAMEWORK_SWAGGER
-SWAGGER_SETTINGS = {
-    "exclude_namespaces": [
-        "private_root_urls",
-        "private_apis",
-    ], # List URL namespaces to ignore
-    "api_version": '0.1',  # Specify your API's version
-    "api_path": "/",  # Specify the path to your API not a root level
-    "enabled_methods": [  # Specify which methods to enable in Swagger UI
-        'get',
-        'post',
-        'patch',
-        'delete'
-    ],
-    "api_key": '', # An API key
-    "is_authenticated": False,  # Set to True to enforce user authentication,
-    "is_superuser": False,  # Set to True to enforce admin only access
-}
+LOGIN_REDIRECT_URL = "/api/v1"
 
-##CASLIB
+
+# CASLIB
 SERVER_URL = SERVER_URL + REDIRECT_URL
 CAS_SERVER = 'https://auth.iplantcollaborative.org'
 SERVICE_URL = SERVER_URL + '/CAS_serviceValidater?sendback='\
@@ -328,102 +338,155 @@ SERVICE_URL = SERVER_URL + '/CAS_serviceValidater?sendback='\
 PROXY_URL = SERVER_URL + '/CAS_proxyUrl'
 PROXY_CALLBACK_URL = SERVER_URL + '/CAS_proxyCallback'
 
+# Chromogenic
+LOCAL_STORAGE = "/storage"
 
-#pyes secrets
+# pyes secrets
 ELASTICSEARCH_HOST = SERVER_URL
 ELASTICSEARCH_PORT = 9200
 
-#Django-Celery secrets
+# Django-Celery secrets
 BROKER_URL = 'redis://localhost:6379/0'
-BROKER_BACKEND = "redis"
-REDIS_PORT = 6379
-REDIS_HOST = "localhost"
-BROKER_USER = ""
-BROKER_PASSWORD = ""
-REDIS_DB = 0
-REDIS_CONNECT_RETRY = True
-CELERY_ENABLE_UTC = True
-CELERY_TIMEZONE = "America/Phoenix"
-CELERY_SEND_EVENTS = True
 CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
-CELERY_TASK_RESULT_EXPIRES = 3*60*60 #Store results for 3 hours
-#CELERYBEAT_SCHEDULER = "djcelery.schedulers.DatabaseScheduler"
-CELERYBEAT_CHDIR=PROJECT_ROOT
-CELERYD_MAX_TASKS_PER_CHILD=50
-CELERYD_LOG_FORMAT="[%(asctime)s: %(name)s-%(levelname)s/%(processName)s [PID:%(process)d] @ %(pathname)s on %(lineno)d] %(message)s"
-CELERYD_TASK_LOG_FORMAT="[%(asctime)s: %(name)s-%(levelname)s/%(processName)s [PID:%(process)d] [%(task_name)s(%(task_id)s)] @ %(pathname)s on %(lineno)d] %(message)s"
-
-# Django-Celery Local Settings
-#CELERY_QUEUES = (
-#        Queue('imaging'), Exchange('imaging'), routing_key='imaging'),
-#    )
-CELERY_DEFAULT_QUEUE='default'
-
-#NOTE: Leave this block out until the 'bug' regarding CELERY_ROUTES is fixed
-#      See steve gregory for more details..
-
-#     #NOTE: This is a Tuple of dicts!
-#     from kombu import Queue
-#     CELERY_QUEUES = (
-#             Queue('default'),
-#             Queue('imaging', routing_key='imaging.#')
-#         )
-CELERYBEAT_SCHEDULE = {
-    "check_image_membership": {
-        "task": "check_image_membership",
-        "schedule": timedelta(minutes=15),
-        "options": {"expires": 10*60, "time_limit":2*60,
-                    "queue": "celery_periodic"}
-    },
-    "monitor_instances": {
-        "task": "monitor_instances",
-        "schedule" : timedelta(minutes=15),
-        "options": {"expires":10*60, "time_limit":10*60,
-                    "queue":"celery_periodic"}
-    },
-    "clear_empty_ips": {
-        "task": "clear_empty_ips",
-        "schedule": crontab(hour="0", minute="0", day_of_week="*"),
-        "options":{"expires": 60*60,
-                   "queue":"celery_periodic"}
-    },
-    "remove_empty_networks": {
-        "task": "remove_empty_networks",
-        "schedule": crontab(hour="*/2", minute="0", day_of_week="*"),
-        "options": {"expires":5*60, "time_limit":5*60,
-                    "queue": "celery_periodic"}
-    },
-}
-CELERY_ROUTES= ('atmosphere.route_logger.RouteLogger', )
-CELERY_ROUTES += ({
-    "chromogenic.tasks.migrate_instance_task" : \
-        {"queue": "imaging", "routing_key": "imaging.execute"},
-    "chromogenic.tasks.machine_imaging_task" : \
-        {"queue": "imaging", "routing_key": "imaging.execute"},
-    "service.tasks.machine.freeze_instance_task" : \
-        {"queue": "imaging", "routing_key": "imaging.prepare"},
-    "service.tasks.machine.process_request" : \
-        {"queue": "imaging", "routing_key": "imaging.complete"},
-        },)
-#     # Django-Celery Development settings
-# CELERY_ALWAYS_EAGER = True
+# Related to Broker and ResultBackend
+REDIS_CONNECT_RETRY = True
+# General Celery Settings
+CELERY_ENABLE_UTC = True
+CELERYD_PREFETCH_MULTIPLIER = 1
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_SEND_EVENTS = True
+CELERY_TASK_RESULT_EXPIRES = 3 * 60 * 60  # Store results for 3 hours
+CELERYD_MAX_TASKS_PER_CHILD = 10
+CELERYD_LOG_FORMAT = "[%(asctime)s: %(name)s-%(levelname)s"\
+    "/%(processName)s [PID:%(process)d]"\
+    " @ %(pathname)s on %(lineno)d] %(message)s"
+CELERYD_TASK_LOG_FORMAT = "[%(asctime)s: %(name)s-%(levelname)s"\
+    "/%(processName)s [PID:%(process)d]"\
+    " [%(task_name)s(%(task_id)s)] "\
+    "@ %(pathname)s on %(lineno)d] %(message)s"
+# To use Manual Routing:
+# - 1. Create an Exchange,
+# - 2. Create a Queue,
+# - 3. Bind Queue to Exchange
+CELERY_QUEUES = (
+    Queue('default', Exchange('default'), routing_key='default'),
+    Queue('email', Exchange('default'), routing_key='email.sending'),
+    Queue('ssh_deploy', Exchange('deployment'), routing_key='long.deployment'),
+    Queue('fast_deploy', Exchange('deployment'), routing_key='short.deployment'),
+    Queue('imaging', Exchange('imaging'), routing_key='imaging'),
+    Queue('periodic', Exchange('periodic'), routing_key='periodic'),
+)
+CELERY_DEFAULT_QUEUE = 'default'
+CELERY_DEFAULT_ROUTING_KEY = "default"
+CELERY_DEFAULT_EXCHANGE = 'default'
+CELERY_DEFAULT_EXCHANGE_TYPE = 'direct'
+# NOTE: We are Using atmosphere's celery_router as an interim solution.
+CELERY_ROUTES = ('atmosphere.celery_router.CloudRouter', )
+# # Django-Celery Development settings
 # CELERY_EAGER_PROPAGATES_EXCEPTIONS = True  # Issue #75
 
 import djcelery
 djcelery.setup_loader()
 
+# Related to Celerybeat
+CELERYBEAT_CHDIR = PROJECT_ROOT
+
+CELERYBEAT_SCHEDULE = {
+    "check_image_membership": {
+        "task": "check_image_membership",
+        "schedule": timedelta(minutes=60),
+        "options": {"expires": 10 * 60, "time_limit": 2 * 60}
+    },
+    "prune_machines": {
+        "task": "prune_machines",
+        # Every day of the week @ 12am (Midnight)
+        "schedule": crontab(hour="0", minute="0", day_of_week="*"),
+        "options": {"expires": 10 * 60, "time_limit": 10 * 60}
+    },
+    "monitor_machines": {
+        "task": "monitor_machines",
+        # Every day of the week @ 1am
+        #"schedule": crontab(hour="1", minute="0", day_of_week="*"),
+        "schedule": timedelta(minutes=30),
+        "options": {"expires": 10 * 60, "time_limit": 10 * 60}
+    },
+    "monitor_sizes": {
+        "task": "monitor_sizes",
+        "schedule": timedelta(minutes=30),
+        "options": {"expires": 10 * 60, "time_limit": 10 * 60}
+    },
+    "monitor_instance_allocations": {
+        "task": "monitor_instance_allocations",
+        "schedule": timedelta(minutes=15),
+        "options": {"expires": 25 * 60, "time_limit": 25 * 60}
+    },
+    "monitor_instances": {
+        "task": "monitor_instances",
+        "schedule": timedelta(minutes=15),
+        "options": {"expires": 10 * 60, "time_limit": 10 * 60}
+    },
+    "clear_empty_ips": {
+        "task": "clear_empty_ips",
+        "schedule": timedelta(minutes=120),
+        "options": {"expires": 60 * 60}
+    },
+    "monthly_allocation_reset": {
+        "task": "monthly_allocation_reset",
+        # Every month, first of the month.
+        "schedule": crontab(0, 0, day_of_month=1, month_of_year="*"),
+        "options": {"expires": 5 * 60, "time_limit": 5 * 60}
+    },
+    "remove_empty_networks": {
+        "task": "remove_empty_networks",
+        # Every two hours.. midnight/2am/4am/...
+        "schedule": crontab(hour="*/2", minute="0", day_of_week="*"),
+        "options": {"expires": 5 * 60, "time_limit": 5 * 60}
+    },
+}
+
+#     # Django-Celery Development settings
+# CELERY_EAGER_PROPAGATES_EXCEPTIONS = True  # Issue #75
+
+"""
+For generating a unique SECRET_KEY -- Used by Django in various ways.
+"""
+# This Method will generate SECRET_KEY and write it to file..
+
+
+def generate_secret_key(secret_key_path):
+    from django.utils.crypto import get_random_string
+    from datetime import datetime
+    chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
+    secret_value = get_random_string(50, chars)
+    comment_block = "\"\"\"\nThis file was Auto-Generated on %s\n\"\"\"\n" % datetime.now()
+    with open(secret_key_path, "w") as key_file:
+        key_file.write(comment_block)
+        key_file.write("SECRET_KEY=\"%s\"\n" % secret_value)
+
+# This import will Use an existing SECRET_KEY, or Generate your SECRET_KEY
+# if it doesn't exist yet.
+try:
+    from .secret_key import SECRET_KEY
+except ImportError:
+    SETTINGS_DIR = os.path.abspath(os.path.dirname(__file__))
+    generate_secret_key(os.path.join(SETTINGS_DIR, 'secret_key.py'))
+    try:
+        from .secret_key import SECRET_KEY
+    except ImportError:
+        raise Exception(
+            "__init__.py could not generate a SECRET_KEY in secret_key.py")
 
 """
 Import local settings specific to the server, and secrets not checked into Git.
 """
 from atmosphere.settings.local import *
 
-"""
-Mostly good for TEST settings, especially DB conf.
-"""
-if DEBUG:
-    # Its OK if there is no testing.py on the server!
-    try:
-        from atmosphere.settings.testing import *
-    except ImportError:
-        pass
+
+def _get_method_for_string(method_str, the_globals=None):
+    """
+    This setting will provide a way to move easily from
+    'my_method' --> my_method the function
+    """
+    if not the_globals:
+        the_globals = globals()
+    return the_globals[method_str]

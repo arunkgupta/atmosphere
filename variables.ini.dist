@@ -1,0 +1,133 @@
+[COMMON]
+; Examples of each are listed behind the ;
+SERVER_URL = ; https://www.my-website.com
+LDAP_SERVER = ; ldap://my.ldap.com
+LDAP_SERVER_DN = ; ou=example,dc=org
+TOKEN_EXPIRY_TIME_DAYS = ; 1
+DJANGO_SERVER_URL = ; https://www.my-website.com
+
+[nginx]
+ATMOSPHERE_PATH = ; /path/to/atmosphere
+BUNDLE_FILE = ; selfsigned_bundle.crt
+CERT_DIR = ; /etc/ssl/certs
+CERT_FILE = ; selfsigned_server.crt
+COMBINED_CERT_FILE = ; selfsigned_combined.crt
+COMBINED_CERT_PATH = ; /etc/ssl/certs/selfsigned_combined.crt
+DHPARAM = ; /etc/ssl/certs/dhparam.pem
+KEY_FILE = ; selfsigned_server.key
+KEY_PATH = ; /etc/ssl/private/
+KEY_SIZE = ; 2048
+LEADERBOARD_URL = ; leaderboard.server.com
+LOCATIONS_DIR = ; /etc/nginx/locations
+SITES_ENABLED_DIR = ; /etc/nginx/sites-enabled
+SITES_AVAILABLE_DIR = ; /etc/nginx/sites-available
+SERVER_URL = ; www.my-website.com
+VIRTUALENV_PATH = ; /path/virtualenv/atmo
+
+[uwsgi.ini]
+LOCAL_DEV = ; False
+PATH_TO_ATMOSPHERE = ; /path/to/atmosphere
+VIRTUALENV_PATH = ; /path/virtualenv/atmo
+UWSGI_USER = ; www-data
+UWSGI_GROUP = ; www-data
+UWSGI_LOG_PATH = ; /var/log/uwsgi/atmosphere_uwsgi.log
+
+[local.py]
+AUTH_USE_OVERRIDE = ; True will override authentication set in __init__.py
+AUTH_MOCK_USER = ; testuser
+AUTH_ENABLE_MOCK = ; True
+AUTH_ENABLE_GLOBUS = ; False
+AUTH_ENABLE_CAS = ; False
+AUTH_ENABLE_LDAP = ; False
+ANSIBLE_ROOT = ; /path/to/atmosphere-ansible
+LOGOUT_REDIRECT_URL = ; /logout
+CAS_AUTH_PREFIX = ; /
+CAS_SERVER = ; https://cas.server.com
+LDAP_SERVER = ; ldap://my.ldap.com
+LDAP_SERVER_DN = ; ou=example,dc=org
+JWT_INSTALL = ; False
+JWT_PUBLIC_KEY = ; /path/to/b64_key.pub
+JWT_CLIENT_KEY = ; client_key
+JWT_CLIENT_SECRET = ; client_secret
+GLOBUS_OAUTH_ID = ; globus_key
+GLOBUS_OAUTH_SECRET = ; globus_secret
+GLOBUS_OAUTH_SCOPE = ; scope_one
+GLOBUS_OAUTH_CREDENTIALS_SCOPE = ; scope_two
+GLOBUS_OAUTH_ATMOSPHERE_SCOPE = ; scope_three
+GLOBUS_TOKENINFO_URL = ; https://globus.server.org/token_details
+GLOBUS_TOKEN_URL = ; https://globus.server.org/token
+GLOBUS_AUTH_URL = ; https://globus.server.org/authorize
+OAUTH_CLIENT_KEY = ; oauth_key
+OAUTH_CLIENT_SECRET = ; oauth_secret
+DATABASE_NAME = ; atmosphere_db
+DATABASE_ENGINE = ; django.db.backends.postgresql_psycopg2
+DATABASE_USER = ; psql_user
+DATABASE_CONN_MAX_AGE = ; 60
+DATABASE_PASSWORD = ; psql_password
+DATABASE_HOST = ; localhost
+DATABASE_PORT = ; 5432
+DJANGO_DEBUG = ; True
+ENFORCING = ; False ;NOTE: DO NOT SET TO TRUE UNLESS YOU ARE PRODUCTION!
+DJANGO_JENKINS = ; False
+DJANGO_TEMPLATE_DEBUG = ; True
+LOG_LIBCLOUD = ; False
+LOGGING_LEVEL = ; logging.INFO
+LOGGING_DEP_LEVEL = ; logging.WARNING
+LOGSTASH_HOST = ; logstash.server.com
+LOGSTASH_PORT = ; 8000
+METRIC_SERVER = ; atmosphere-metrics.server.com
+SELF_SIGNED_CERT = ; False
+TEST_RUNNER = ; custom.test_runner
+TEST_RUNNER_USER = ; test_user
+TEST_RUNNER_PASS = ; test_secret
+MOCK_USER = ; test_user
+USE_MOCK_AUTH = ; False
+#local.py - site configuration
+TIME_ZONE = ; America/Phoenix
+SITE_NAME = ; CyVerse
+ADMINS_EMAIL_TUPLE = ; [('Atmosphere Admin', 'atmo-admin@website.com'),('System Admins', 'sys-admin@website.com')]
+SUPPORT_EMAIL = ; help@website.org
+SUPPORT_EMAIL_SIGNATURE = ; CyVerse Atmosphere Team
+SUPPORT_LINKS = ; {'getting_started': "https://link_to.wiki.org/Using+Instances", 'new_provider': "https://link_to.wiki.org/Changing+Providers", "faq": "https://link_to.wiki.org/Cloud_FAQ"}
+REPLICATION_PROVIDER_LOCATION = ; iPlant Cloud - Tucson
+MONTHLY_RESET_PROVIDER_LOCATIONS = ; ['iPlant Cloud - Tucson']
+USER_EMAIL_LOOKUP_METHOD = ; ldap_get_email_info
+EMAIL_LOOKUP_METHOD = ; ldapLookupEmail
+DEFAULT_EMAIL_DOMAIN = ; iplantcollaborative.org
+DEFAULT_ALLOCATION_THRESHOLD = ; (7 * 24 * 60)  # In Minutes
+DEFAULT_ALLOCATION_DELTA = ; (365 * 24 * 60)  # In Minutes
+DEFAULT_QUOTA = ; {'cpu': 16, 'memory': 128, 'storage': 10}
+DEFAULT_KEYSTONE_ROLE = ; _member_
+INSTANCE_HOSTNAMING_DOMAIN = ; iplantcollaborative.org
+INSTANCE_HOSTNAMING_FORMAT = ; vm%(three)s-%(four)s.%(domain)s
+
+#NOTE: Their are *REQUIRED* quotations around 'timedelta(..)'!
+CELERYBEAT_SCHEDULE = ; {"monitor_instances": {"schedule": 'timedelta(minutes=5)',}}
+
+[secrets.py]
+IRODS_HOST = ; irods.server.com
+IRODS_PORT = ; 8000
+IRODS_ZONE = ; irods_zone
+IRODS_ADMIN_USER = ; irods_user
+IRODS_ADMIN_PASS = ; irods_password
+LOCAL_STORAGE = ; /storage
+CHROMO_DEPLOYMENT_KEY = ; ssh-rsa AAA... example@deploykey.com
+OPENSTACK_PROVIDER_KEY = ; OpenStack Provider
+OPENSTACK_ADMIN_KEY = ; admin_key
+OPENSTACK_ADMIN_SECRET = ; admin_secret
+OPENSTACK_AUTH_URL = ; http://keystone.server.com:5000/v2.0/tokens
+OPENSTACK_ADMIN_TENANT = ; admin_tenant
+OPENSTACK_DEFAULT_REGION = ; openstack_region
+OPENSTACK_DEFAULT_ROUTER = ; openstack_router
+OPENSTACK_USER_ROLE = ; defaultMemberRole
+OPENSTACK_ADMIN_ROLE = ; admin
+ATMOSPHERE_SUPERUSER = ; atmo_superuser
+ATMOSPHERE_VNC_LICENSE = ; vnc_license_key
+
+[celeryd.default]
+VIRTUAL_ENV_ATMOSPHERE= ; /path/virtualenv/atmo
+ATMOSPHERE_LOCATION= ; /path/to/atmosphere
+SSL_LOCATION= ; /etc/ssl
+SSL_CERTIFICATE= ; selfsigned_server.crt
+SSL_KEY= ; selfsigned_server.key
+USE_PRODUCTION= ; True
